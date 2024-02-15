@@ -4,4 +4,8 @@ This repository was created to be an interactive course recommendation platform 
 
 ## Version 0.1.0
 
+First stable version
+
+## Version 0.1.0
+
 Initial commit

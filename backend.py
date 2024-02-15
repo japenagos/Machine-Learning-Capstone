@@ -4,8 +4,6 @@ from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 from sklearn.decomposition import NMF
 from sklearn.neighbors import NearestNeighbors
-import tensorflow as tf
-import keras
 from joblib import dump, load
 import pandas as pd
 import numpy as np
@@ -17,10 +15,7 @@ models = ("Course Similarity",
           "Clustering",
           "Clustering with PCA",
           "KNN",
-          "NMF",
-          "Neural Network",
-          "Regression with Embedding Features",
-          "Classification with Embedding Features")
+          "NMF")
 
 def load_ratings():
     return pd.read_csv("ratings.csv")
@@ -38,67 +33,6 @@ def load_courses():
 
 def load_bow():
     return pd.read_csv("courses_bows.csv")
-
-class RecommenderNet(keras.Model):
-  def __init__(self, num_users, num_items, embedding_size=16, **kwargs):
-    """ Constructor
-      :param int num_users: number of users
-      :param int num_items: number of items
-      :param int embedding_size: the size of embedding vector
-    """
-    super(RecommenderNet, self).__init__(**kwargs)
-    self.num_users = num_users
-    self.num_items = num_items
-    self.embedding_size = embedding_size
-    
-    # Define a user_embedding vector
-    # Input dimension is the num_users
-    # Output dimension is the embedding size
-    self.user_embedding_layer = keras.layers.Embedding(
-      input_dim=num_users,
-      output_dim=embedding_size,
-      name='user_embedding_layer',
-      embeddings_initializer="he_normal",
-      embeddings_regularizer=keras.regularizers.l2(1e-6),
-    )
-    # Define a user bias layer
-    self.user_bias = keras.layers.Embedding(
-      input_dim=num_users,
-      output_dim=1,
-      name="user_bias"
-    )
-    # Define an item_embedding vector
-    # Input dimension is the num_items
-    # Output dimension is the embedding size
-    self.item_embedding_layer = keras.layers.Embedding(
-      input_dim=num_items,
-      output_dim=embedding_size,
-      name='item_embedding_layer',
-      embeddings_initializer="he_normal",
-      embeddings_regularizer=keras.regularizers.l2(1e-6),
-    )
-    # Define an item bias layer
-    self.item_bias = keras.layers.Embedding(
-      input_dim=num_items,
-      output_dim=1,
-      name="item_bias"
-    )
-      
-  def call(self, inputs):
-    """
-        method to be called during model fitting
-        :param inputs: user and item one-hot vectors
-    """
-    # Compute the user embedding vector
-    user_vector = self.user_embedding_layer(inputs[:, 0])
-    user_bias = self.user_bias(inputs[:, 0])
-    item_vector = self.item_embedding_layer(inputs[:, 1])
-    item_bias = self.item_bias(inputs[:, 1])
-    dot_user_item = tf.tensordot(user_vector, item_vector, 2)
-    # Add all the components (including bias)
-    x = dot_user_item + user_bias + item_bias
-    # Sigmoid output layer to output the probability
-    return tf.nn.relu(x)
 
 
 def add_new_ratings(new_courses):
@@ -232,10 +166,6 @@ def knn_recommendations(user_id):
   index_to_delete = np.where(scores == 0)
   courses = np.delete(courses, index_to_delete)
   scores = np.delete(scores, index_to_delete)
-  # Sort results
-  sorted_indexes = np.argsort(scores)[::-1]
-  courses = courses[sorted_indexes]
-  scores = scores[sorted_indexes]
   users = [user_id] * len(courses)
   return users, courses, scores
 
@@ -262,10 +192,6 @@ def nmf_recommendations(user_id):
   index_to_delete = np.where(scores == 0)
   courses = np.delete(courses, index_to_delete)
   scores = np.delete(scores, index_to_delete)
-  # Sort results
-  sorted_indexes = np.argsort(scores)[::-1]
-  courses = courses[sorted_indexes]
-  scores = scores[sorted_indexes]
   users = [user_id] * len(courses)
   return users, courses, scores
 
@@ -284,8 +210,7 @@ def train(model_name, params):
     pca_kmeans.fit(features)
     dump(pca_kmeans, "pca_kmeans.joblib")
   elif model_name == "KNN":
-    ratings = pd.read_csv("ratings.csv")
-    interactions = ratings.pivot(index='user', columns='item', values='rating').fillna(0).reset_index(drop=True)
+    interactions = pd.read_csv("interactions.csv").set_index('user')
     knn = NearestNeighbors(metric="cosine", n_neighbors=params['n_neighbors'])
     knn.fit(interactions)
     dump(knn, "knn.joblib")
